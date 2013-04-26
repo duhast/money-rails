@@ -45,6 +45,15 @@ module MoneyRails
             # FIXME: provide a better default
             name = [subunit_name, "money"].join("_")
           end
+          if name == subunit_name #Store as fractional in the same column, no cents
+            subunit_name = "#{name}_cents"
+            define_method subunit_name do |*args|
+              read_attribute(name) * send("currency_for_#{name}").subunit_to_unit
+            end
+            define_method "#{subunit_name}=" do |value|
+              write_attribute(name, value.to_f / send("currency_for_#{name}").subunit_to_unit)
+            end
+          end
 
           # Create a reverse mapping of the monetized attributes
           @monetized_attributes ||= {}
