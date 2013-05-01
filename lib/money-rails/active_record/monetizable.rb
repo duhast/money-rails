@@ -48,10 +48,23 @@ module MoneyRails
           if name == subunit_name #Store as fractional in the same column, no cents
             subunit_name = "#{name}_cents"
             define_method subunit_name do |*args|
-              read_attribute(name) * send("currency_for_#{name}").subunit_to_unit
+              amount = read_attribute(name)
+              amount = amount * send("currency_for_#{name}").subunit_to_unit unless amount.nil?
+              amount
             end
             define_method "#{subunit_name}=" do |value|
-              write_attribute(name, value.to_f / send("currency_for_#{name}").subunit_to_unit)
+              if options[:allow_nil] && value.blank?
+                amount = nil
+              elsif not value.is_a?(Integer)
+                amount = value
+              else
+                begin
+                  amount = value.to_f / send("currency_for_#{name}").subunit_to_unit
+                rescue NoMethodError
+                  return nil
+                end
+              end
+              write_attribute(name, amount)
             end
           end
 
