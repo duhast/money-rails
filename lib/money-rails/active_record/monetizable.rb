@@ -45,8 +45,11 @@ module MoneyRails
             # FIXME: provide a better default
             name = [subunit_name, "money"].join("_")
           end
+
+          @stored_as_fractional ||= []
           if name == subunit_name #Store as fractional in the same column, no cents
             subunit_name = "#{name}_cents"
+            @stored_as_fractional << name.to_sym
             define_method subunit_name do |*args|
               amount = read_attribute(name)
               amount = amount * send("currency_for_#{name}").subunit_to_unit unless amount.nil?
@@ -75,6 +78,9 @@ module MoneyRails
             def monetized_attributes
               @monetized_attributes || superclass.monetized_attributes
             end
+            def stored_as_fractional
+              @stored_as_fractional || superclass.stored_as_fractional
+            end
           end unless respond_to? :monetized_attributes
 
           # Include numericality validation if needed
@@ -83,7 +89,11 @@ module MoneyRails
               :allow_nil => options[:allow_nil],
               :numericality => true
             }
-            validates subunit_name, validation_options
+            unless @stored_as_fractional.include?(name.to_sym)
+              validates subunit_name, validation_options
+            else
+              validates name, validation_options.merge(options.slice(:numericality))
+            end
 
             validation_options = { :allow_nil => options[:allow_nil] }
             validation_options = options[:numericality].merge(validation_options) if options[:numericality]
